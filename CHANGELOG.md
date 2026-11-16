@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.1
+
+- Allows is_journal 0.8.0, whose wire is unchanged from 0.7.0. Its new
+  refusal reasons (chain ownership) arrive as `WriteRefused`.
+
 ## 0.1.0
 
 - `JournalWriter`: one entry per connection, answered `Written`, `NotTip`,
