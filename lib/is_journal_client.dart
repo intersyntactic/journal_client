@@ -30,12 +30,12 @@ export 'package:is_journal/is_journal.dart' show EntryHash;
 export 'package:is_journal/service.dart' show Kind;
 
 /// What the writer said became of one entry.
-sealed class WriteAnswer {
-  const WriteAnswer();
+sealed class WriteResult {
+  const WriteResult();
 
   /// The writer's answer [text], read strictly: anything but one line of one
   /// of its answers is [Unanswered].
-  static WriteAnswer read(String text) {
+  static WriteResult read(String text) {
     final lines = text.split('\n');
     if (lines.length != 2 || lines.last.isNotEmpty) {
       return Unanswered('not one line: $text');
@@ -55,7 +55,7 @@ sealed class WriteAnswer {
 }
 
 /// Recorded as [entry].
-final class Written extends WriteAnswer {
+final class Written extends WriteResult {
   const Written(this.entry);
 
   final EntryHash entry;
@@ -63,7 +63,7 @@ final class Written extends WriteAnswer {
 
 /// Refused, and nothing was added, because the entry named as previous is
 /// not its chain's tip: [tip] is. Safe to send again naming [tip].
-final class NotTip extends WriteAnswer {
+final class NotTip extends WriteResult {
   const NotTip(this.tip);
 
   final EntryHash tip;
@@ -71,7 +71,7 @@ final class NotTip extends WriteAnswer {
 
 /// Refused, and nothing was added: [why] is the service's reason, such as a
 /// kind the sender table doesn't give this user.
-final class WriteRefused extends WriteAnswer {
+final class WriteRefused extends WriteResult {
   const WriteRefused(this.why);
 
   final String why;
@@ -79,7 +79,7 @@ final class WriteRefused extends WriteAnswer {
 
 /// The add failed partway, and the entry may be in anyway. Read the chain's
 /// tip before sending it again.
-final class WriteFailed extends WriteAnswer {
+final class WriteFailed extends WriteResult {
   const WriteFailed(this.why);
 
   final String why;
@@ -88,7 +88,7 @@ final class WriteFailed extends WriteAnswer {
 /// No answer could be read: the socket unreachable, closed before answering,
 /// silent past the deadline, or an answer the writer doesn't give. The entry
 /// may or may not be in.
-final class Unanswered extends WriteAnswer {
+final class Unanswered extends WriteResult {
   const Unanswered(this.why);
 
   final String why;
@@ -108,7 +108,7 @@ final class JournalWriter {
 
   /// Records [body] as an entry of [kind] after [previous], or starting a
   /// chain of its own when [previous] is null.
-  Future<WriteAnswer> write(
+  Future<WriteResult> write(
     Kind kind,
     List<int> body, {
     EntryHash? previous,
@@ -129,7 +129,7 @@ final class JournalWriter {
         final text = await utf8.decoder.bind(socket!).join();
         return text.isEmpty
             ? const Unanswered('closed before answering')
-            : WriteAnswer.read(text);
+            : WriteResult.read(text);
       }().timeout(timeout);
     } on TimeoutException {
       return Unanswered('no answer within $timeout');

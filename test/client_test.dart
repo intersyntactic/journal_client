@@ -101,10 +101,10 @@ void main() {
 
     test('reads the answer strictly', () {
       final hash = EntryHash.of(bytesOf('x')).hex;
-      expect(WriteAnswer.read('ok $hash\n'), isA<Written>());
-      expect(WriteAnswer.read('failed disk full\n'), isA<WriteFailed>());
-      expect(WriteAnswer.read('refused not-tip $hash\n'), isA<NotTip>());
-      expect(WriteAnswer.read('refused not-tip xyz\n'), isA<WriteRefused>());
+      expect(WriteResult.read('ok $hash\n'), isA<Written>());
+      expect(WriteResult.read('failed disk full\n'), isA<WriteFailed>());
+      expect(WriteResult.read('refused not-tip $hash\n'), isA<NotTip>());
+      expect(WriteResult.read('refused not-tip xyz\n'), isA<WriteRefused>());
       for (final bad in [
         'ok $hash',
         'ok xyz\n',
@@ -113,7 +113,7 @@ void main() {
         'refused\n',
         'maybe\n',
       ]) {
-        expect(WriteAnswer.read(bad), isA<Unanswered>(), reason: bad);
+        expect(WriteResult.read(bad), isA<Unanswered>(), reason: bad);
       }
     });
   });
