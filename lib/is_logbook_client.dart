@@ -1,5 +1,5 @@
-/// The one client for an is_journal service: a [JournalWriter] for its write
-/// socket and a [JournalReader] for its read socket.
+/// The one client for an is_logbook service: a [LogbookWriter] for its write
+/// socket and a [LogbookReader] for its read socket.
 ///
 /// The write socket takes one entry per connection: the request
 /// `<kind>\n<previous>\n<body>`, the write side then closed, and one line
@@ -23,11 +23,11 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:is_journal/is_journal.dart';
-import 'package:is_journal/service.dart' show Kind;
+import 'package:is_logbook/is_logbook.dart';
+import 'package:is_logbook/service.dart' show Kind;
 
-export 'package:is_journal/is_journal.dart' show EntryHash;
-export 'package:is_journal/service.dart' show Kind;
+export 'package:is_logbook/is_logbook.dart' show EntryHash;
+export 'package:is_logbook/service.dart' show Kind;
 
 /// What the writer said became of one entry.
 sealed class WriteResult {
@@ -95,8 +95,8 @@ final class Unanswered extends WriteResult {
 }
 
 /// The service's write socket at [socketPath].
-final class JournalWriter {
-  const JournalWriter(
+final class LogbookWriter {
+  const LogbookWriter(
     this.socketPath, {
     this.timeout = const Duration(seconds: 10),
   });
@@ -181,7 +181,7 @@ final class Entry extends Subscribed {
 }
 
 /// The backlog has been read: everything after this was added while
-/// subscribed. [head] is the journal's last entry of any kind when the
+/// subscribed. [head] is the logbook's last entry of any kind when the
 /// backlog ended (null when there was none), and a place to subscribe from
 /// next time.
 final class CaughtUp extends Subscribed {
@@ -202,7 +202,7 @@ final class GotEntry extends Got {
   final Entry entry;
 }
 
-/// The journal holds no entry by that hash.
+/// The logbook holds no entry by that hash.
 final class GotNone extends Got {
   const GotNone();
 }
@@ -252,8 +252,8 @@ final class ReadBroken extends ReadFailure {
 }
 
 /// The service's read socket at [socketPath].
-final class JournalReader {
-  const JournalReader(
+final class LogbookReader {
+  const LogbookReader(
     this.socketPath, {
     this.timeout = const Duration(seconds: 10),
   });
@@ -264,7 +264,7 @@ final class JournalReader {
   final Duration timeout;
 
   /// Every entry of [kinds] (every kind, when null) after [from] (the
-  /// journal's start, when null), then a [CaughtUp], then each new entry as
+  /// logbook's start, when null), then a [CaughtUp], then each new entry as
   /// it is added, for as long as the stream is listened to. Cancelling it
   /// closes the socket. Errors with a [ReadFailure] and ends.
   Stream<Subscribed> subscribe({Set<Kind>? kinds, EntryHash? from}) async* {
@@ -410,7 +410,7 @@ final class JournalReader {
   /// [recorded] as their object.
   static void _check(EntryHash hash, String hex, Uint8List recorded) {
     final bytes = _unhex(hex);
-    final entry = bytes == null ? null : JournalEntry.parse(bytes);
+    final entry = bytes == null ? null : LogbookEntry.parse(bytes);
     if (entry == null) {
       throw ReadBroken('entry ${hash.hex}: not 96 bytes of an entry');
     }
