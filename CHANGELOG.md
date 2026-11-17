@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.2
+
+- Allows is_journal 0.9.0, whose wire is unchanged from 0.8.0. Its renamed
+  kinds parse like any other, and its renamed refusals arrive as
+  `WriteRefused`.
+
 ## 0.1.1
 
 - Allows is_journal 0.8.0, whose wire is unchanged from 0.7.0. Its new
