@@ -287,7 +287,7 @@ final class JournalReader {
           case ['caught-up', final hex] when EntryHash.parse(hex) != null:
             yield CaughtUp(EntryHash.parse(hex));
           case ['entry', _, _, _, _]:
-            yield await _entry(line, frames);
+            yield await _parseEntry(line, frames);
           case ['refused', _, ...]:
             throw ReadRefused(line.substring('refused '.length));
           default:
@@ -320,12 +320,14 @@ final class JournalReader {
           case ['none', final hex] when hex == entry.hex:
             return const GotNone();
           case ['unreadable', final hex, final why]
-              when hex == entry.hex && (why == 'missing' || why == 'corrupt'):
+              when hex == entry.hex &&
+                  // wire-ok: the service's two reasons; others are ReadBroken
+                  (why == 'missing' || why == 'corrupt'):
             return GotUnreadable(why);
           case ['failed', _, ...]:
             return GotFailed(line.substring('failed '.length));
           case ['entry', final hex, _, _, _, _] when hex == entry.hex:
-            return GotEntry(await _entry(line, frames));
+            return GotEntry(await _parseEntry(line, frames));
           default:
             throw ReadBroken('not a get answer for ${entry.hex}: $line');
         }
@@ -372,7 +374,7 @@ final class JournalReader {
 
   /// The entry framed by [line], `entry <hash> <kind> <previous> <length>`
   /// with the 96 bytes in hex as a sixth word from `get`, and its bytes.
-  static Future<Entry> _entry(String line, _Frames frames) async {
+  static Future<Entry> _parseEntry(String line, _Frames frames) async {
     final words = line.split(' ');
     final hash = EntryHash.parse(words[1]);
     final kind = switch (words[2]) {
