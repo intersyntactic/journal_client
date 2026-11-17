@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.2.0
+
+For [is_logbook 0.2.0](https://pub.dev/packages/is_logbook/versions/0.2.0),
+where an entry's id is the sha256 of its bytes. Breaking:
+
+- Ids are `ObjectId`, re-exported from this package; `EntryHash` is no
+  longer exported. `Entry.hash` is now `Entry.id`.
+- Every entry is checked against its id, from `subscribe` as well as `get`,
+  so `Entry.checked` is gone. Its header must match its frame's kind and
+  previous.
+- New `AlreadyRecorded`: the same bytes were already recorded. Sending the
+  same bytes again after `WriteFailed` or `Unanswered` is now safe.
+- The writer checks that `ok` and `refused duplicate` name the id of what it
+  sent; any other id is `Unanswered`.
+- `Entry.kind` is no longer nullable. Bytes without a header, which only
+  `get` can return, are `GotEntryWithoutHeader`.
+- `GotUnreadable.why` is an `Unreadable` enum: `missing` or `corrupt`.
+- The README's socket paths are placeholders.
+
 ## 0.1.1
 
 - Cancelling a `subscribe` stream now completes while the subscription is
