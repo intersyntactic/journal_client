@@ -1,12 +1,12 @@
-# is_journal_client
+# is_logbook_client
 
-The one client for an [is_journal](https://pub.dev/packages/is_journal)
+The one client for an [is_logbook](https://pub.dev/packages/is_logbook)
 service: a writer for its write socket and a reader for its read socket. It
 replaces the copies of the socket protocol that each program used to carry.
 
 ## Writing
 
-    final writer = JournalWriter('/run/record/journal.sock');
+    final writer = LogbookWriter('/run/record/logbook.sock');
     switch (await writer.write(Kind.parse('turn')!, body, previous: tip)) {
       case Written(:final entry): // recorded as entry
       case NotTip(:final tip):    // nothing added; send again after tip
@@ -22,7 +22,7 @@ a chain. `timeout` (10 seconds unless given) bounds the wait for an answer.
 
 ## Reading
 
-    final reader = JournalReader('/run/record-read/journal.sock');
+    final reader = LogbookReader('/run/record-read/logbook.sock');
     await for (final item in reader.subscribe(kinds: {turn}, from: last)) {
       switch (item) {
         case Entry(): // an entry: hash, kind, previous, recorded, body
@@ -31,7 +31,7 @@ a chain. `timeout` (10 seconds unless given) bounds the wait for an answer.
     }
 
 - `subscribe` sends every entry of those kinds (every kind when `kinds` is
-  null) after `from` (the journal's start when null), then `CaughtUp`, then
+  null) after `from` (the logbook's start when null), then `CaughtUp`, then
   each new entry while the stream is listened to. `CaughtUp.head` is also a
   place to subscribe from next time.
 - `tip(entry)` answers the tip of that entry's chain.

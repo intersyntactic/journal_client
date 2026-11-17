@@ -3,9 +3,9 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:is_journal/is_journal.dart';
-import 'package:is_journal/service.dart';
-import 'package:is_journal_client/is_journal_client.dart';
+import 'package:is_logbook/is_logbook.dart';
+import 'package:is_logbook/service.dart';
+import 'package:is_logbook_client/is_logbook_client.dart';
 import 'package:test/test.dart';
 
 Uint8List bytesOf(String s) => utf8.encode(s);
@@ -32,21 +32,21 @@ Future<ServerSocket> fake(String path, String? answer) async {
 void main() {
   final me = Process.runSync('id', ['-un']).stdout.toString().trim();
   late Directory dir;
-  late JournalService service;
-  late JournalWriter writer;
-  late JournalReader reader;
+  late LogbookService service;
+  late LogbookWriter writer;
+  late LogbookReader reader;
 
   setUp(() async {
     // Unix socket paths are short (about 104 bytes on macOS).
     dir = Directory('/tmp').createTempSync('jc');
-    service = await JournalService.start(
-      Journal.open(Directory('${dir.path}/j'))!,
+    service = await LogbookService.start(
+      Logbook.open(Directory('${dir.path}/j'))!,
       SenderTable.parse(bytesOf('$me turn witnessed\n')),
       File('${dir.path}/w.sock'),
       readSocket: File('${dir.path}/r.sock'),
     );
-    writer = JournalWriter('${dir.path}/w.sock');
-    reader = JournalReader('${dir.path}/r.sock');
+    writer = LogbookWriter('${dir.path}/w.sock');
+    reader = LogbookReader('${dir.path}/r.sock');
   });
   tearDown(() async {
     await service.close();
@@ -84,14 +84,14 @@ void main() {
     });
 
     test('says unanswered when nothing listens', () async {
-      final answer = await JournalWriter('${dir.path}/nobody.sock')
+      final answer = await LogbookWriter('${dir.path}/nobody.sock')
           .write(kind('turn'), bytesOf('x'));
       expect(answer, isA<Unanswered>());
     });
 
     test('says unanswered when the answer does not come in time', () async {
       final server = await fake('${dir.path}/silent.sock', null);
-      final answer = await JournalWriter(
+      final answer = await LogbookWriter(
         '${dir.path}/silent.sock',
         timeout: const Duration(milliseconds: 200),
       ).write(kind('turn'), bytesOf('x'));
@@ -165,7 +165,7 @@ void main() {
 
     test('errors with unreachable when nothing listens', () {
       expect(
-        JournalReader('${dir.path}/nobody.sock').subscribe().toList(),
+        LogbookReader('${dir.path}/nobody.sock').subscribe().toList(),
         throwsA(isA<ReadUnreachable>()),
       );
     });
@@ -178,7 +178,7 @@ void main() {
       ]) {
         final server = await fake('${dir.path}/$name.sock', odd);
         await expectLater(
-          JournalReader('${dir.path}/$name.sock').subscribe().toList(),
+          LogbookReader('${dir.path}/$name.sock').subscribe().toList(),
           throwsA(isA<ReadBroken>()),
           reason: odd,
         );
@@ -210,7 +210,7 @@ void main() {
       expect(utf8.decode(entry.body), 'b');
     });
 
-    test('says none for an entry the journal does not hold', () async {
+    test('says none for an entry the logbook does not hold', () async {
       expect(await reader.get(EntryHash.of(bytesOf('x'))), isA<GotNone>());
     });
 
@@ -238,7 +238,7 @@ void main() {
       final lied = '${answer.substring(0, answer.length - 1)}b';
       final server = await fake('${dir.path}/lie.sock', lied);
       expect(
-        JournalReader('${dir.path}/lie.sock').get(a),
+        LogbookReader('${dir.path}/lie.sock').get(a),
         throwsA(
           isA<ReadBroken>().having((e) => e.why, 'why', contains('object')),
         ),
@@ -265,7 +265,7 @@ void main() {
       final lied = [...words.sublist(0, 5), flipped].join(' ');
       final server = await fake('${dir.path}/code.sock', lied);
       expect(
-        JournalReader('${dir.path}/code.sock').get(a),
+        LogbookReader('${dir.path}/code.sock').get(a),
         throwsA(
           isA<ReadBroken>().having((e) => e.why, 'why', contains('elsewhere')),
         ),
@@ -279,7 +279,7 @@ void main() {
       final other = EntryHash.of(bytesOf('other')).hex;
       final server = await fake('${dir.path}/other.sock', 'none $other\n');
       expect(
-        JournalReader('${dir.path}/other.sock').get(a),
+        LogbookReader('${dir.path}/other.sock').get(a),
         throwsA(isA<ReadBroken>()),
       );
       await Future<void>.delayed(const Duration(milliseconds: 100));
