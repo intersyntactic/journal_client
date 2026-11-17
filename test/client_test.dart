@@ -139,6 +139,21 @@ void main() {
       await items.cancel();
     });
 
+    test('cancel completes while the subscription waits for entries', () async {
+      final arrived = Completer<void>();
+      final got = <Subscribed>[];
+      final subscription = reader.subscribe(kinds: {kind('turn')}).listen((s) {
+        got.add(s);
+        if (s is Entry) arrived.complete();
+      });
+      final a = await write('turn', 'a');
+      await arrived.future;
+      // Long enough for the subscription to be waiting on the socket again.
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+      await subscription.cancel().timeout(const Duration(seconds: 2));
+      expect(got.whereType<Entry>().single.hash, a);
+    });
+
     test('every kind when kinds is null, from a given entry', () async {
       final a = await write('turn', 'a');
       final w = await write('witnessed', 'w');

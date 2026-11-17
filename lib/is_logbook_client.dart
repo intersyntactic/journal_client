@@ -267,38 +267,73 @@ final class LogbookReader {
   /// logbook's start, when null), then a [CaughtUp], then each new entry as
   /// it is added, for as long as the stream is listened to. Cancelling it
   /// closes the socket. Errors with a [ReadFailure] and ends.
-  Stream<Subscribed> subscribe({Set<Kind>? kinds, EntryHash? from}) async* {
-    if (kinds != null && kinds.isEmpty) {
-      throw ArgumentError.value(kinds, 'kinds', 'is empty; null means every');
-    }
-    final names = kinds == null ? '*' : kinds.map((k) => k.name).join(',');
-    final socket = await _connect();
-    try {
-      socket.add(
-        ascii.encode('subscribe $names from ${from?.hex ?? 'start'}\n'),
-      );
-      final frames = _Frames(socket);
-      while (true) {
-        final line = await frames.line();
-        if (line == null) return;
-        switch (line.split(' ')) {
-          case ['caught-up', 'start']:
-            yield const CaughtUp(null);
-          case ['caught-up', final hex] when EntryHash.parse(hex) != null:
-            yield CaughtUp(EntryHash.parse(hex));
-          case ['entry', _, _, _, _]:
-            yield await _parseEntry(line, frames);
-          case ['refused', _, ...]:
-            throw ReadRefused(line.substring('refused '.length));
-          default:
-            throw ReadBroken('not a subscribe frame: $line');
+  Stream<Subscribed> subscribe({Set<Kind>? kinds, EntryHash? from}) {
+    // Not an async* generator: its cancel waits for the next yield, which
+    // never comes while the subscription waits for an entry.
+    final out = StreamController<Subscribed>();
+    Socket? socket;
+    _Frames? frames;
+    var cancelled = false;
+
+    Future<void> read() async {
+      try {
+        if (kinds != null && kinds.isEmpty) {
+          throw ArgumentError.value(
+            kinds,
+            'kinds',
+            'is empty; null means every',
+          );
         }
+        final names = kinds == null ? '*' : kinds.map((k) => k.name).join(',');
+        socket = await _connect();
+        if (cancelled) return;
+        socket!.add(
+          ascii.encode('subscribe $names from ${from?.hex ?? 'start'}\n'),
+        );
+        frames = _Frames(socket!);
+        while (true) {
+          final line = await frames!.line();
+          if (line == null || cancelled) return;
+          switch (line.split(' ')) {
+            case ['caught-up', 'start']:
+              out.add(const CaughtUp(null));
+            case ['caught-up', final hex] when EntryHash.parse(hex) != null:
+              out.add(CaughtUp(EntryHash.parse(hex)));
+            case ['entry', _, _, _, _]:
+              final entry = await _parseEntry(line, frames!);
+              if (cancelled) return;
+              out.add(entry);
+            case ['refused', _, ...]:
+              throw ReadRefused(line.substring('refused '.length));
+            default:
+              throw ReadBroken('not a subscribe frame: $line');
+          }
+        }
+      } on SocketException catch (e) {
+        if (!cancelled) out.addError(ReadUnreachable('socket: ${e.message}'));
+      } on Object catch (e, trace) {
+        if (!cancelled) out.addError(e, trace);
+      } finally {
+        socket?.destroy();
+        // Not awaited: close completes only after a cancel, and a listener
+        // that cancels on an error would wait on this read to finish.
+        if (!cancelled) unawaited(out.close());
       }
-    } on SocketException catch (e) {
-      throw ReadUnreachable('socket: ${e.message}');
-    } finally {
-      socket.destroy();
     }
+
+    late final Future<void> reading;
+    out
+      ..onListen = () {
+        reading = read();
+      }
+      ..onCancel = () async {
+        cancelled = true;
+        // Ends a read waiting on the socket, so [reading] finishes.
+        await frames?.cancel();
+        socket?.destroy();
+        await reading;
+      };
+    return out.stream;
   }
 
   /// The tip of [entry]'s chain: [entry] itself until an entry names it as
@@ -461,6 +496,10 @@ final class _Frames {
       }
     }
   }
+
+  /// Stops reading: a [line] or [bytes] waiting on the socket ends as if it
+  /// had closed.
+  Future<void> cancel() => _source.cancel();
 
   /// Exactly [length] bytes, or null if the socket closes first.
   Future<Uint8List?> bytes(int length) async {

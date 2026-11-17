@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.1
+
+- Cancelling a `subscribe` stream now completes while the subscription is
+  waiting for new entries; it used to wait for the next entry, forever if
+  none came.
+
 ## 0.1.0
 
 - The client for an [is_logbook](https://pub.dev/packages/is_logbook)
