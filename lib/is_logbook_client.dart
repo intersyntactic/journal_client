@@ -308,6 +308,12 @@ final class LogbookReader {
   /// logbook's start, when null), then a [CaughtUp], then each new entry as
   /// it is added, for as long as the stream is listened to. Cancelling it
   /// closes the socket. Errors with a [ReadFailure] and ends.
+  ///
+  /// Don't wrap it in an `async*` generator that relays it with `await for`:
+  /// cancelling the wrapper waits for its next `yield`, which never comes
+  /// while the logbook is quiet. Wrap it with `where`, `map`, `expand`,
+  /// `asyncMap` or `transform`, or a `StreamController` whose `onCancel`
+  /// cancels this subscription; each passes the cancel straight through.
   Stream<Subscribed> subscribe({Set<Kind>? kinds, ObjectId? from}) {
     // Not an async* generator: its cancel waits for the next yield, which
     // never comes while the subscription waits for an entry.

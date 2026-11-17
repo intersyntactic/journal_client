@@ -42,7 +42,10 @@ To record two, put something in the body that tells them apart.
 - `subscribe` sends every entry of those kinds (every kind when `kinds` is
   null) after `from` (the logbook's start when null), then `CaughtUp`, then
   each new entry while the stream is listened to. `CaughtUp.head` is also a
-  place to subscribe from next time.
+  place to subscribe from next time. To wrap it, use stream operators
+  (`where`, `map`, `expand`, `asyncMap`, `transform`), not an `async*`
+  generator: cancelling an `async*` wrapper waits for its next `yield`,
+  which never comes while the logbook is quiet.
 - `tip(entry)` answers the tip of that entry's chain.
 - `get(entry)` answers `GotEntry`, `GotNone`, `GotUnreadable`
   (`Unreadable.missing` or `Unreadable.corrupt`) or `GotFailed`, or
