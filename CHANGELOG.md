@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.3.0
+
+For [is_logbook 0.3.0](https://pub.dev/packages/is_logbook/versions/0.3.0),
+so a package on is_logbook 0.3.0 can use this client. Nothing in this
+package's API or on the wire changes.
+
+- A service on is_logbook 0.3.0 refuses a sender table naming user 65534
+  (`nobody`) or 4294967294–4294967295, and closes a trajectory on
+  `trajectory-closed` (`Kind.trajectoryClosed`); writes to a closed
+  trajectory come back as `WriteRefused` with why
+  `trajectory-closed <trajectory>`.
+
 ## 0.2.0
 
 For [is_logbook 0.2.0](https://pub.dev/packages/is_logbook/versions/0.2.0),
